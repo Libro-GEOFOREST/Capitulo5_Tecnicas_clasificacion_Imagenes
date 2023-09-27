@@ -2,13 +2,11 @@
 
 ## 1. VISUALIZACIÓN DE IMÁGENES
 
-En el presente ejercicio se va a aprender a visualizar y manipular imágenes satelitales, además de a operar con ellas para generar índices de vegetación empleando el lenguaje R. Se utilizarán las imágenes descargadas en el ejercicio anterior.  
-
-### 1.1. Exploración de la imagen
+En el presente ejercicio se va a aprender a visualizar y manipular imágenes satelitales, además de a operar con ellas para generar índices de vegetación empleando el lenguaje R. Los datos e imágenes utilizadas en este capítulo son los que se descargaron en el [Capítulo 7 Sensores, acceso y procesado de imágenes multiespectrales y térmicas de interés forestal](https://github.com/Libro-GEOFOREST/Capitulo7-Sensores_Teledeteccion/blob/main/README.md#capitulo7-sensores_teledeteccion)  
 
 Primero se va a aprender a visualizar y manejar las imágenes de satélite, intentando comprender la organización interna de las mismas, cómo se configura la estructura de sus datos y la información que aportan del terreno.
 
-#### 1.1.1 Preparación de los datos en el entorno RStudio Cloud
+#### 1.1. Preparación de los datos en el entorno RStudio Cloud
  
 Como se ha explicado, el satélite Landsat 5 TM, opera en las siguientes bandas:  
 
@@ -81,9 +79,9 @@ Cuando se imprimen las variables con las que se han introducido las bandas, se p
 # Impresión de variables 
 b1
 ```
-De aquí se puede obtener información, como la resolución espacial de la imagen **resolution** (30x30m de tamaño de pixel), la extensión que ocupa **extent** (con sus coordenadas máximas y mínimas en x e y), el sistema de coordenadas de referencia **crs** (en este caso, el elipsoide WGS84 en sistema proyectado UTM y en la zona 30 Norte, que corresponde con el código EPSG 32630) o los valores máximos y mínimos de los píxeles **values** (en 16 bits=$\2^{16}$). Fíjate en el sistema de referencia que utiliza la imagen. Será necesario recordarlo en el siguiente paso.  
+De aquí se puede obtener información, como la resolución espacial de la imagen **resolution** (30x30m de tamaño de pixel), la extensión que ocupa **extent** (con sus coordenadas máximas y mínimas en x e y), el sistema de coordenadas de referencia **crs** (en este caso, el elipsoide WGS84 en sistema proyectado UTM y en la zona 30 Norte, que corresponde con el código EPSG 32630) o los valores máximos y mínimos de los píxeles **values** (en 16 bits=  $\2^{16}$  2<sup>16</sup>). Fíjate en el sistema de referencia que utiliza la imagen. Será necesario recordarlo en el siguiente paso.  
 
-#### 1.1.2 Recorte de la zona de interés  
+#### 1.2. Recorte de la zona de interés  
 Se debe tener en cuenta que los rásteres suelen ser archivos que consumen una cantidad considerable de espacio en disco, memoria y ancho de banda de conexión. Las limitaciones de memoria RAM de la aplicación RStudio Cloud, obliga a realizar primeramente un recorte de las imágenes por la zona de estudio.  
 
 ```r
@@ -131,7 +129,7 @@ b5<-(b5*0.0000275)- 0.2
 b7<-(b7*0.0000275)- 0.2
 ```
 
-#### 3.1.2 Estadísticas de la imagen
+#### 1.3. Estadísticas de la imagen
 
 Para comprobar el resultado visualiza el **histograma** que permite comprender la estadística de la imagen y las **bandas**:   
 Obtención del **histograma**.  
@@ -147,21 +145,50 @@ hist(b5,main = "Banda 5",breaks=200,xlab = "Valor del pixel")
 hist(b7,main = "Banda 7",breaks=200,xlab = "Valor del pixel")
 ``` 
 
+![](./Auxiliares/Pre_histogramas1.PNG) 
+
 Se esperaba que los valores de reflectancia fluctuaran entre 0 y 1. Sin embargo, se observan valores superiores a 1.5. ¿Qué ha podido pasar?  
 
-#### 3.1.3 Visualización
+#### 1.4. Visualización
 
 En este paso se van a visualizar banda a banda la imagen, ya transformada anteriormente, mediante la función **plot**.
 
 ```r
 par(mfrow=c(1,1))
 plot(b1, main = "Azul",col = grey.colors(255, start=0, end=1))
+```
+
+![](./Auxiliares/Pre_azul.PNG) 
+
+```r
 plot(b2, main = "Verde",col = grey.colors(255, start=0, end=1))
+```
+
+![](./Auxiliares/Pre_verde.PNG) 
+
+```r
 plot(b3, main = "Rojo", col = grey.colors(255, start=0, end=1))
+```
+
+![](./Auxiliares/Pre_rojo.PNG) 
+
+```r
 plot(b4, main = "Infrarrojo cercano 1",col = grey.colors(255, start=0, end=1))
+```
+
+![](./Auxiliares/Pre_nir1.PNG) 
+
+```r
 plot(b5, main = "Infrarrojo cercano 2", col = grey.colors(255, start=0, end=1))
+```
+
+![](./Auxiliares/Pre_nir2.PNG) 
+
+```r
 plot(b7, main = "Infrarrojo lejano",col = grey.colors(255, start=0, end=1))
-``` 
+```
+
+![](./Auxiliares/Pre_fir.PNG) 
 
 Ahora se puede vislumbrar qué ha pasado con los valores por encima de 1 del histograma. Parece que las zonas nevadas han saturado el sensor, por lo que ha quedado reflejado con valores de reflectancia anormalmente altos. Se puede solucionar limitando los valores digitales de los píxeles a 1.  
 
@@ -186,7 +213,9 @@ hist(b4,main = "Banda 4",breaks=200,xlab = "Valor del pixel")
 hist(b5,main = "Banda 5",breaks=200,xlab = "Valor del pixel")
 hist(b7,main = "Banda 7",breaks=200,xlab = "Valor del pixel")
 
-``` 
+```
+
+![](./Auxiliares/Pre_histogramas.PNG) 
 
 Lo siguiente será unir todas las bandas para visualizarlas en una sola imagen que contenga todas las bandas mediante un **stack**. Se le cambia el nombre a las capas para que resulten más manejables los procesos posteriores.    
 
@@ -202,6 +231,8 @@ names(Color_real)<-c("B3","B2","B1")
 ```
 
 Y su visualización.  
+
+![](./Auxiliares/Pre_color_natural.PNG) 
 
 ```r
 #Visualización de la imagen
@@ -221,6 +252,8 @@ En algunas ocasiones, se puede mejorar la visualización de la imagen mediante u
 plotRGB(Color_real,scale=1,stretch='lin')
 ```
 
+![](./Auxiliares/Pre_color_natural_hist_lineal.png) 
+
 O bien, siguiendo una ecualización del histograma (**hist**), en el que el estiramiento asigna más valores de visualización a las partes del histograma que ocurren con mayor frecuencia, mejorando el detalle de la visualización de éstas áreas del histograma original frente a las otras zonas del histograma.  
 
 ![](./Auxiliares/equalste.gif)  
@@ -231,6 +264,8 @@ O bien, siguiendo una ecualización del histograma (**hist**), en el que el esti
 plotRGB(Color_real,scale=1,stretch='hist')
 ```
 
+![](./Auxiliares/Pre_color_natural_hist_ecual.png) 
+
 Otra forma de visualizar los datos puede ser usando la combinación de bandas 4-3-1:  
 
 ```r
@@ -239,13 +274,23 @@ Falso_color<-stack(b4,b3,b2)
 
 #Visualización de la imagen en falso color
 plotRGB(Falso_color,scale=1)
+```
 
+![](./Auxiliares/Pre_falso_color.png) 
+
+```r
 #Visualización de la imagen en falso color con ajuste del histograma lineal
 plotRGB(Falso_color,scale=1,stretch='lin')
+```
 
+![](./Auxiliares/Pre_color_natural_hist_lineal.png) 
+
+```r
 #Visualización de la imagen en falso color con ajuste del histograma siguiendo una ecualización
 plotRGB(Falso_color,scale=1,stretch='hist')
 ```
+
+![](./Auxiliares/Pre_color_natural_hist_ecual.png) 
 
 Esta otra combinación de bandas se conoce como **falso color**. La vegetación aparece en tonos de rojo, las áreas urbanas son de color azul cian y los suelos varían de marrón oscuro a marrón claro. El hielo, la nieve y las nubes son de color blanco o cian claro. Los árboles de coníferas aparecerán de un rojo más oscuro que las de frondosas. Ésta es una combinación de bandas muy popular y es útil para estudios de vegetación, monitoreo de patrones de drenaje y suelo y varias etapas de crecimiento de cultivos. Generalmente, los tonos rojo intenso indican hojas anchas y/o vegetación más saludable, mientras que los rojos más claros significan pastizales o áreas con poca vegetación. Las áreas urbanas densamente pobladas se muestran en azul claro.   
 
@@ -276,6 +321,8 @@ Y, posteriormente, se buscan combinaciones de bandas que realcen determinadas ca
 plotRGB(img_preincendio, r=6,g=5,b=3,scale=1,stretch='lin')
 ```
 
+![](./Auxiliares/Pre_color_6_5_3.png) 
+
 Haciendo zoom sobre una extensión de la zona de estudio, se vería así: 
 
 ```r
@@ -284,9 +331,11 @@ plotRGB(img_preincendio, r=6,g=5,b=3,scale=1,stretch='lin',
         ext=extent(c(483500,490000,4125000,4130000)))
 ```
 
+![](./Auxiliares/Pre_color_6_5_3_zoom.png) 
+
 Esta combinación de bandas incluye información sobre la cantidad de partículas en la atmósfera, humo o neblina. Además se puede interpretar la presencia de vegetación sana en tonos de verde oscuro y claro durante la temporada de crecimiento, las zonas urbanas son blancas, grises, cian o moradas, las arenas, los suelos y los minerales aparecen en colores brillantes. La absorción casi completa de las bandas de infrarrojos medios en el agua, el hielo y la nieve proporciona líneas costeras bien definidas y fuentes de agua destacadas dentro de la imagen. La nieve y el hielo aparecen como azul oscuro, el agua es negra o azul oscuro. Las superficies calientes como los incendios forestales y las calderas de los volcanes saturan las bandas del IR medio y aparecen en tonos de rojo o amarillo. Una aplicación particular de esta combinación es el monitoreo de incendios forestales.  
 
-#### 3.1.4 Guardar imagen multibanda generada  
+#### 1.5. Guardar imagen multibanda generada  
 
 Para guardar la imagen generada se utiliza la función raster:   
 
@@ -297,9 +346,9 @@ writeRaster(img_preincendio,
             datatype='FLT4S') # guarda en valores decimales
 ```
 
-### 3.2. Generar índices de vegetación
+### 2. ÍNDICES DE VEGETACIÓN
 
-#### 3.2.1 Construcción del índice NDVI
+#### 2.1 Construcción del índice NDVI
 
 ##### Relaciones entre bandas  
 
@@ -403,7 +452,7 @@ barplot(tipos.veg,
                       "Vegetación \n densa \n o sana"))
 ```
 
-#### 3.2.2 Construcción del índice NBR  
+#### 2.2 Construcción del índice NBR  
 
 Otro índice ampliamente utilizado es el **NBR**, Normalized Burn Ratio. Se suele emplear para identificar zonas quemadas y su formulación es parecida a la del índice NDVI, pero emplea el infrarrojo cercano 1 (NIR, banda 4 del Landsat 5TM) y el infrarrojo lejano o de onda corta (SWIR, banda 7 del Landsat 5TM).  
  $$ NBR=\frac { NIR - SWIR }{ NIR + SWIR } $$
@@ -435,7 +484,7 @@ plot(NBR_pre,
      axes = FALSE, box = FALSE)
 ```
 
-### 3.2.3 Guardar índices generados
+### 2.3 Guardar índices generados
 
 Para guardar los índices generados se utiliza la función raster:  
 ```r
