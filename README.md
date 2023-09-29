@@ -190,37 +190,37 @@ par(mfrow=c(1,1))
 plot(b1, main = "Azul",col = grey.colors(255, start=0, end=1))
 ```
 
-![](./Auxiliares/Pre_azul.PNG) 
+![](./Auxiliares/Pre_azul.png) 
 
 ```r
 plot(b2, main = "Verde",col = grey.colors(255, start=0, end=1))
 ```
 
-![](./Auxiliares/Pre_verde.PNG) 
+![](./Auxiliares/Pre_verde.png) 
 
 ```r
 plot(b3, main = "Rojo", col = grey.colors(255, start=0, end=1))
 ```
 
-![](./Auxiliares/Pre_rojo.PNG) 
+![](./Auxiliares/Pre_rojo.png) 
 
 ```r
 plot(b4, main = "Infrarrojo cercano 1",col = grey.colors(255, start=0, end=1))
 ```
 
-![](./Auxiliares/Pre_nir1.PNG) 
+![](./Auxiliares/Pre_nir1.png) 
 
 ```r
 plot(b5, main = "Infrarrojo cercano 2", col = grey.colors(255, start=0, end=1))
 ```
 
-![](./Auxiliares/Pre_nir2.PNG) 
+![](./Auxiliares/Pre_nir2.png) 
 
 ```r
 plot(b7, main = "Infrarrojo lejano",col = grey.colors(255, start=0, end=1))
 ```
 
-![](./Auxiliares/Pre_fir.PNG) 
+![](./Auxiliares/Pre_fir.png) 
 
 Ahora se puede vislumbrar qué ha pasado con los valores por encima de 1 del histograma. Parece que las zonas nevadas han saturado el sensor, por lo que ha quedado reflejado con valores de reflectancia anormalmente altos. Se puede solucionar limitando los valores digitales de los píxeles a 1.  
 
@@ -247,7 +247,7 @@ hist(b7,main = "Banda 7",breaks=200,xlab = "Valor del pixel")
 
 ```
 
-![](./Auxiliares/Pre_histogramas.PNG) 
+![](./Auxiliares/Pre_histogramas.png) 
 
 Lo siguiente será unir todas las bandas para visualizarlas en una sola imagen que contenga todas las bandas mediante un **stack**. Se le cambia el nombre a las capas para que resulten más manejables los procesos posteriores.    
 
@@ -283,8 +283,7 @@ par(mfrow=c(1,1))
 plotRGB(Color_real,scale=1)
 ```
 
-
-![](./Auxiliares/Pre_color_natural.PNG) 
+![](./Auxiliares/Pre_color_natural.png) 
 
 Esta combinación de bandas se conoce como **color natural**. En ella se utilizan las bandas pertenecientes a la parte visible del espectro electromagnetico. Por eso, la apariancia del terreno es similar al  sistema visual humano: la vegetación saludable es verde, la vegetación no saludable es marrón y amarilla, las carreteras son grises o verde oscuro y las costas son de color blanco. Esta combinación de bandas proporciona la mayor penetración de agua y una información batimétrica y de sedimentos superior. También se utiliza para estudios urbanos. Las nubes y la nieve aparecen blancas y son difíciles de distinguir.  
 
