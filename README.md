@@ -451,7 +451,7 @@ hist(b5,main = "Banda 5",breaks=200,xlab = "Valor del pixel")
 hist(b7,main = "Banda 7",breaks=200,xlab = "Valor del pixel")
 ```
 
-![](./Auxiliares/Post_histogramas.PNG) 
+![](./Auxiliares/Post_histogramas.png) 
 
 ```r
 #Visualización
@@ -459,37 +459,37 @@ par(mfrow=c(1,1))
 plot(b1, main = "Azul",col = grey.colors(255, start=0, end=1))
 ```
 
-![](./Auxiliares/Post_azul.PNG) 
+![](./Auxiliares/Post_azul.png) 
 
 ```r
 plot(b2, main = "Verde",col = grey.colors(255, start=0, end=1))
 ```
 
-![](./Auxiliares/Post_verde.PNG) 
+![](./Auxiliares/Post_verde.png) 
 
 ```r
 plot(b3, main = "Rojo", col = grey.colors(255, start=0, end=1))
 ```
 
-![](./Auxiliares/Post_rojo.PNG) 
+![](./Auxiliares/Post_rojo.png) 
 
 ```r
 plot(b4, main = "Infrarrojo cercano 1",col = grey.colors(255, start=0, end=1))
 ```
 
-![](./Auxiliares/Post_nir1.PNG) 
+![](./Auxiliares/Post_nir1.png) 
 
 ```r
 plot(b5, main = "Infrarrojo cercano 2", col = grey.colors(255, start=0, end=1))
 ```
 
-![](./Auxiliares/Post_nir2.PNG) 
+![](./Auxiliares/Post_nir2.png) 
 
 ```r
 plot(b7, main = "Infrarrojo lejano",col = grey.colors(255, start=0, end=1))
 ```
 
-![](./Auxiliares/Post_fir.PNG) 
+![](./Auxiliares/Post_fir.png) 
 
 ```r
 #Limitar los valores digitales de los píxeles de la imagen a 1
@@ -510,7 +510,7 @@ hist(b5,main = "Banda 5",breaks=200,xlab = "Valor del pixel")
 hist(b7,main = "Banda 7",breaks=200,xlab = "Valor del pixel")
 ```
 
-![](./Auxiliares/Post_histogramas2.PNG) 
+![](./Auxiliares/Post_histogramas2.png) 
 
 ```r
 #Unión de bandas rojo-verde-azul en una sola imagen
@@ -540,21 +540,21 @@ par(mfrow=c(1,1))
 plotRGB(Color_real,scale=1)
 ```
 
-![](./Auxiliares/Post_color_real.PNG) 
+![](./Auxiliares/Post_color_real.png) 
 
 ```r
 #Visualización con ajuste del histograma lineal
 plotRGB(Color_real,scale=1,stretch='lin')
 ```
 
-![](./Auxiliares/Post_color_real_lineal.PNG) 
+![](./Auxiliares/Post_color_real_lineal.png) 
 
 ```r
 #Visualización con ajuste del histograma siguiendo una ecualización
 plotRGB(Color_real,scale=1,stretch='hist')
 ```
 
-![](./Auxiliares/Post_color_real_ecual.PNG) 
+![](./Auxiliares/Post_color_real_ecual.png) 
 
 ```r
 #Unión de bandas infrarrojo-rojo-verde en una sola imagen
@@ -564,21 +564,21 @@ Falso_color<-stack(b4,b3,b2)
 plotRGB(Falso_color,scale=1)
 ```
 
-![](./Auxiliares/Post_falso_color.PNG) 
+![](./Auxiliares/Post_falso_color.png) 
 
 ```r
 #Visualización de la imagen en falso color con ajuste del histograma lineal
 plotRGB(Falso_color,scale=1,stretch='lin')
 ```
 
-![](./Auxiliares/Post_falso_color_lineal.PNG) 
+![](./Auxiliares/Post_falso_color_lineal.png) 
 
 ```r
 #Visualización de la imagen en falso color con ajuste del histograma siguiendo una ecualización
 plotRGB(Falso_color,scale=1,stretch='hist')
 ```
 
-![](./Auxiliares/Post_falso_color_ecual.PNG) 
+![](./Auxiliares/Post_falso_color_ecual.png) 
 
 ```r
 #Unión de bandas espectrales de Landsat en una sola imagen
@@ -614,7 +614,7 @@ names(img_postincendio)
 plotRGB(img_postincendio, r=6,g=5,b=3,scale=1,stretch='lin')
 ```
 
-![](./Auxiliares/Post_6_5_3.PNG) 
+![](./Auxiliares/Post_6_5_3.png) 
 
 ```r
 #Visualización de la imagen con la combinación de bandas 6-5-3 con zoom
@@ -622,7 +622,7 @@ plotRGB(img_postincendio, r=6,g=5,b=3,scale=1,stretch='lin',
         ext=extent(c(483500,490000,4125000,4130000)))
 ```
 
-![](./Auxiliares/Post_6_5_3_zoom.PNG) 
+![](./Auxiliares/Post_6_5_3_zoom.png) 
 
 ```r
 #Guardar imagen postincendio
