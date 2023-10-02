@@ -1667,7 +1667,7 @@ barplot(dNBR_umb_recort,
         names.arg = c("A","B","C"),las=0)
 legend("topright",
        legend=c("A = Severidad alta","B = Sev moderada","C = Severidad baja"),
-       fill=(mis_colores3), cex=0.65, y.intersp = 1.2, x.intersp = 1.2)
+       fill=rev(mis_colores3), cex=0.65, y.intersp = 1.2, x.intersp = 1.2)
 ```
 
 ![](./Auxiliares/Perimetro_barplot.png) 
@@ -1723,8 +1723,8 @@ bp<-barplot(dNBR_umb_recort,
             names.arg = c("A","B","C"),las=0)
 legend("topright",
        legend=c("A = Severidad alta","B = Sev moderada","C = Severidad baja"),
-       fill=(mis_colores3),cex=0.65,y.intersp = 1.2,x.intersp = 1.2)
-text(bp, y=2500, labels=valores_area)
+       fill=rev(mis_colores3),cex=0.65,y.intersp = 1.2,x.intersp = 1.2)
+text(bp, y=2500, labels=rev(valores_area))
 ```
 
 ![](./Auxiliares/Perimetro_barplot2.png) 
