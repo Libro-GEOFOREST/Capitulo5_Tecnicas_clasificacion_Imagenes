@@ -1747,7 +1747,7 @@ mapview(perimetro.manual,col.regions="red")+
   mapview(perimetro.def,col.regions="green",burst=TRUE, hide=FALSE)
 ```
 
-![](./Auxiliares/Perimetro_barplot.png) 
+![](./Auxiliares/Perimetro2.png) 
 
 ```r
 #Calcular la superficie
