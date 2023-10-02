@@ -845,7 +845,6 @@ Para empezar, es preciso tener el fichero ESRI shapefile, previamente descargado
 
 Será necesario también tener instalada la librería [**Mapview**](https://cran.r-project.org/web/packages/mapview/mapview.pdf) que permite crear visualizaciones interactivas de datos de forma rápida y sencilla sobre una base cartográfica. Con ella, se pueden visualizar los objetos que van a servir de entrenamiento de la clasificación, contenidos en la variable o campo **'CLASE'**, todo ello, sobre un mapa interactivo.
 
-
 ```r
 #Abrir archivo con los datos de referencia
 library(sf)
@@ -880,6 +879,8 @@ puntos.ref<-st_join(puntos.ref,Referencia)
 mapview(Referencia,zcol="CLASE")+mapview(puntos.ref,alpha=0)
 ```
 
+![](./Auxiliares/Clasificacion2.png) 
+
 En el mapa resultante se pueden observar los puntos, que, tras extraer el valor del píxel en el que se sitúen, serán las áreas de entrenamiento.  
 
 Se introduce, además, la imagen con todas las bandas guardadas.
@@ -902,11 +903,28 @@ valores.pixeles <- extract(img_preincendio, xy)
 valores.pixeles<-as.data.frame(valores.pixeles)
 
 names(valores.pixeles)
+```
 
+```r annotate
+## [1] "img_preincendio.1" "img_preincendio.2" "img_preincendio.3"
+## [4] "img_preincendio.4" "img_preincendio.5" "img_preincendio.6"
+```
+
+```r
 #Cambiar el nombre de los campos para que hagan referencia clara a la banda a la que pertenecen
 names(valores.pixeles)<-c("B1","B2","B3","B4","B5","B7")
 
 head(valores.pixeles)
+```
+
+```r annotate
+##          B1        B2        B3        B4        B5        B7
+## 1 0.0529725 0.0724150 0.0739550 0.1835425 0.1376175 0.0854500
+## 2 0.0512675 0.0726075 0.0704900 0.1998775 0.1292575 0.0696100
+## 3 0.0462625 0.0650450 0.0638075 0.2117300 0.0871825 0.0337500
+## 4 0.0526700 0.0739275 0.0638075 0.2117300 0.1066525 0.0654025
+## 5 0.0612500 0.0827550 0.0779975 0.2115375 0.1093200 0.0653475
+## 6 0.0411200 0.0503325 0.0523675 0.1680875 0.0680975 0.0338875
 ```
 
 En el siguiente paso, consiste en aplicar un bucle **for**, en el que para cada fila (*nrow*) se va a buscar su valor de *CLASE* desde el objeto *puntos.ref* y se va a almacenar en un nuevo campo creado como *clase*. 
@@ -919,6 +937,12 @@ for(i in seq(nrow(puntos.ref))){
 
 #Numero de pixeles pertenecientes a cada clase
 table(valores.pixeles$clase)
+```
+
+```r annotate
+## 
+## 1.Forestal 2.Matorral 3.Cultivos    4.Otros 
+##         25         25         25         25
 ```
 
 Esta **tabla de frecuencias** visualizada en pantalla muestra un resumen del nº de puntos de cada clase existente.
@@ -952,6 +976,8 @@ legend("topleft", legend=rownames(perfiles),
        cex=0.75, y.intersp = 0.75, col=miscolores, lty = 1, lwd =3, bty = "n",)
 ```
 
+![](./Auxiliares/Firma_espectral.png) 
+
 El gráfico anterior muestra la firma espectral de cada clase se acuerdo a las áreas de entrenamiento. ¿Os parece que su forma se asemeja a la realidad?
 
 Analizando el gráfico, puede observarse que la separabilidad de las clases parece, en general, correcta, puesto que no hay firmas iguales que ocupen los mismos valores. No obstante, en la banda 2 las clases cultivos y otros se confunden pero tienden a separarse en el resto de las bandas. Esto sería indicativo de que esta banda no aporta información para discriminar estas clases.  
@@ -979,6 +1005,8 @@ sm.density.compare(valores.pixeles$B5,valores.pixeles$clase,xlab="B5",
 sm.density.compare(valores.pixeles$B7,valores.pixeles$clase,xlab="B7",
                    col=miscolores)
 ```
+
+![](./Auxiliares/Firma_espectral2.png) 
 
 Fijándose bien, es posible discernir que la clase *cultivos* tiene una distribución bimodal en todas las bandas. Es posible que se deba a la diferencia en la zona de estudio entre cultivos en regadío y cultivos en secano.  
 
@@ -1016,6 +1044,8 @@ legend("topright",cex=0.65, y.intersp = 0.55,x.intersp = 0.5,
        inset=c(0,0))
 ```
 
+![](./Auxiliares/Clas_max_prob.png) 
+
 #### 3.2.2 Clasificación supervisada por el método de random forest
 
 Este método, basado en técnicas de *Machine Learning*. Se trata de un método mucho más versátil de aprendizaje automático basado en árboles de decisión y que no necesita que la distribución de los datos siga la normalidad.  
@@ -1036,7 +1066,9 @@ legend("topright",cex=0.65, y.intersp = 0.55,x.intersp = 0.5,
        inset=c(0,0))
 ```
 
-#### 4.2.3 Guardar clasificación generada.
+![](./Auxiliares/Clas_RF.png) 
+
+#### 3.2.3 Guardar clasificación generada.
 
 Para guardar las imagen de la clasificaciones generadas se utiliza la función raster:   
 
@@ -1099,12 +1131,50 @@ Aplicado al estudio:
 #[[1]] contiene la media de las medidas de precisión
 #[[2]] contiene la matriz de confusión media de las iteraciones
 Clas.Max.Prob$modelFit
+```
 
+```r annotate
+## [[1]]
+##   TrainAccuracy TrainKappa method
+## 1     0.8209524  0.7609203 custom
+## 
+## [[2]]
+## Cross-Validated (5 fold) Confusion Matrix 
+## 
+## (entries are average cell counts across resamples)
+##  
+##             Reference
+## Prediction   1.Forestal 2.Matorral 3.Cultivos 4.Otros
+##   1.Forestal        3.4        0.0        0.0     0.0
+##   2.Matorral        0.0        2.2        0.0     0.2
+##   3.Cultivos        0.2        0.2        3.0     0.2
+##   4.Otros           0.0        1.2        0.6     3.2
+##                             
+##  Accuracy (average) : 0.8194
+```
+
+```r
 #Detalle de los resultados con valores medios y desviaciones estandar de las medidas de precisión
 Clas.Max.Prob$model$results
+```
 
+```r annotate
+##   parameter  Accuracy     Kappa AccuracySD  KappaSD
+## 1      none 0.8209524 0.7609203   0.100034 0.133942
+```
+
+```r
 #Detalle de los resultados con las medidas de precisión de cada iteración
 Clas.Max.Prob$model$resample
+```
+
+```r annotate
+##    Accuracy     Kappa Resample
+## 1 0.8571429 0.8108108    Fold1
+## 2 0.9285714 0.9034483    Fold2
+## 3 0.8666667 0.8224852    Fold3
+## 4 0.6666667 0.5535714    Fold4
+## 5 0.7857143 0.7142857    Fold5
 ```
 
 Además, con los datos separados para la evaluación (el 30% restante indicado en el parámetro *trainPartition =0.70*), se vuelve a calcular la matriz de confusión entre los valores reales de la clase a la que pertenece ese punto en el terreno y los valores predichos por el modelo.
@@ -1112,9 +1182,27 @@ Además, con los datos separados para la evaluación (el 30% restante indicado e
 ```r
 #Resultados generales de precisión de la clasificación por máxima probabilidad en la muestra de evaluación
 Clas.Max.Prob$validation$performance$overall
+```
 
+```r annotate
+##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
+##   7.142857e-01   6.190476e-01   5.133317e-01   8.677635e-01   2.500000e-01 
+## AccuracyPValue  McnemarPValue 
+##   3.231033e-07            NaN
+```
+
+```r
 #Matriz de confusión en la muestra de evaluación
 Clas.Max.Prob$validation$performance$table
+```
+
+```r annotate
+##             Reference
+## Prediction   1.Forestal 2.Matorral 3.Cultivos 4.Otros
+##   1.Forestal          6          0          0       0
+##   2.Matorral          1          3          0       3
+##   3.Cultivos          0          1          7       0
+##   4.Otros             0          3          0       4
 ```
 
 Igualmente, para el modelo de clasificación Random Forest:  
@@ -1124,18 +1212,76 @@ Igualmente, para el modelo de clasificación Random Forest:
 #[[1]] contiene la media de las medidas de precisión
 #[[2]] contiene la matriz de confusión media de las iteraciones
 Clas.RF$modelFit
+```
 
+```r annotate
+## [[1]]
+##   TrainAccuracy TrainKappa method
+## 1     0.8298901  0.7732181     rf
+## 
+## [[2]]
+## Cross-Validated (5 fold) Confusion Matrix 
+## 
+## (entries are average cell counts across resamples)
+##  
+##             Reference
+## Prediction   1.Forestal 2.Matorral 3.Cultivos 4.Otros
+##   1.Forestal        3.2        0.2        0.0     0.0
+##   2.Matorral        0.4        3.2        0.4     0.8
+##   3.Cultivos        0.0        0.2        3.0     0.2
+##   4.Otros           0.0        0.0        0.2     2.6
+##                             
+##  Accuracy (average) : 0.8333
+```
+
+```r
 #Detalle de los resultados con valores medios y desviaciones estandar de las medidas de precisión
 Clas.RF$model$results
+```
 
+```r annotate
+##   mtry  Accuracy     Kappa AccuracySD   KappaSD
+## 1    2 0.8298901 0.7732181  0.1122451 0.1500856
+```
+
+```r
 #Detalle de los resultados con las medidas de precisión de cada iteración
 Clas.RF$model$resample
+```
 
+```r annotate
+##    Accuracy     Kappa Resample
+## 1 0.6923077 0.5873016    Fold1
+## 2 0.8000000 0.7368421    Fold2
+## 3 0.8000000 0.7337278    Fold3
+## 4 1.0000000 1.0000000    Fold4
+## 5 0.8571429 0.8082192    Fold5
+```
+
+```r
 #Resultados generales de precisión de la clasificación por el método de Random Fforest en la muestra de evaluación
 Clas.RF$validation$performance$overall
+```
 
+```r annotate
+##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
+##   8.571429e-01   8.095238e-01   6.733473e-01   9.596644e-01   2.500000e-01 
+## AccuracyPValue  McnemarPValue 
+##   2.429187e-11            NaN
+```
+
+```r
 #Matriz de confusión en la muestra de evaluación
 Clas.RF$validation$performance$table
+```
+
+```r annotate
+##             Reference
+## Prediction   1.Forestal 2.Matorral 3.Cultivos 4.Otros
+##   1.Forestal          7          0          0       0
+##   2.Matorral          0          5          0       1
+##   3.Cultivos          0          1          7       1
+##   4.Otros             0          1          0       5
 ```
 
 A la vista de las soluciones, puede concluirse que la clasificación por el método de Random Forest arroja, en este caso, mejores resultados. 
@@ -1166,6 +1312,8 @@ dNBR <- (NBR_pre) - (NBR_post)
 
 plot(dNBR, main="dNBR")
 ```
+
+![](./Auxiliares/dNBR.png) 
 
 ## 4.3. Clasificación del mapa dNBR en niveles de severidad
 
@@ -1238,22 +1386,26 @@ Por último, visualizamos el mapa:
 # Visualizar el mapa con ejes
 plot(dNBR_umb, col = mis_colores,
      main = 'dNBR umbralizado')
+```
 
+![](./Auxiliares/dNBR_umbralizado.png) 
+
+```r
 # Visualizar el mapa sin ejes y con la leyenda creada
 plot(dNBR_umb, col = mis_colores,legend=FALSE,box=FALSE,axes=FALSE,
      main = 'Severidad del incendio')
 legend("topright", inset=0.05, legend =rev(leyenda), fill = rev(mis_colores), cex=0.5) 
 ```
 
+![](./Auxiliares/dNBR_umbralizado2.png) 
+
 ## 4.5.  Estimar el perímetro del incendio
 
 El índice dNBR puede ser una herramienta poderosa para identificar píxeles que tienen una alta probabilidad de estar *"quemados"*. Sin embargo, es importante saber que este índice también es sensible al cambio en el contenido en agua de la superficie y, por lo tanto, a veces los píxeles clasificados como de *"severidad alta"* pueden ser agua, superficies de alta montaña nevadas y también cultivos en regadío. Debido a esto, es importante **enmascarar estas áreas** antes de realizar cualquier análisis cuantitativo de los resultados de diferencia de NBR (dNBR). 
 
-
 Una **máscara** consiste en una capa ráster que contiene píxeles que no se utilizarán en el análisis y, por tanto, tienen asignado un **valor NA**. Así conseguimos que estos píxeles no participen en los resultados.
 
-![](C:/MOOC_TD/Perimetro_severidad/Captura4.png)
-
+![](./Auxiliares/Mascara.png) 
 
 #### Obtención de la 1ª máscara: zonas con vegetación activa previa al fuego
 
@@ -1277,20 +1429,28 @@ NDVI_pre<-raster('C:/MOOC_TD/indices_vegetacion/NDVI_pre.TIF')    #Adaptar la ru
 Ahora, se reclasifica tomando como referencia los valores de la tabla de rangos NDVI. Se asignarán valores NA a aquellos píxeles con valor NDVI < 0.2, es decir, donde no hay vegetación. El resto de píxeles, donde el NDVI indica la existencia de vegetación de algún tipo, con valores NDVI > 0.2, se clasificarán con valor 1. 
 
 ```r
+#Reclasificar NDVI para generar máscara
 mascara.NDVI <- reclassify(NDVI_pre,
                            c(-Inf,0.2,NA, 0.21,Inf,1))
 
+#Visualizar el resultado
 plot(mascara.NDVI,col="red",legend=FALSE, main="Máscara vegetación activa")
 ```
+
+![](./Auxiliares/Mascara_NDVI.png) 
 
 En la imagen anterior se observa el efecto de esta máscara, coloreando en rojo las zonas con vegetación. Ahora, se va a aplicar la función *mask*, empleanto esta máscara y la imagen ráster umbralizada. Se observa como ahora aparecen en blanco, sin valor, aquellas zonas en las que el NDVI era inferior a 0.2, evitando así errores de interpretación. 
 
 ```r
+#Aplicar la máscara al índice dNBR umbralizado
 dNBR.mascara.1<-mask(dNBR_umb,mascara.NDVI)
 
+#Visualizar el resultado
 plot(dNBR.mascara.1,col = mis_colores, main = 'Severidad del incendio en zonas con vegetación', legend=FALSE)
 legend("topright", inset=0.05, legend =rev(leyenda), fill = rev(mis_colores), cex=0.5) 
 ```
+
+![](./Auxiliares/Mascara_NDVI2.png) 
 
 #### Obtención de la 2ª máscara: clasificación forestal
 
@@ -1300,7 +1460,6 @@ Lo primero, al igual que en la máscara creada a partir del índice NDVI, será 
 
 ```r
 Clas_RF<-raster('C:/DESCARGA/Clas_RF.tif')       #Adaptar la ruta donde se ha guardado la imagen de la clasificación
-
 ```
 
 De acuerdo a la clasificación que se realizó en suelos "Forestal", "Matorral", "Cultivos" y "Otros", se construye la leyenda. Para cambiar la escala de colores, se escoge el paquete 'Viridis', asignando 4 tonos.
@@ -1318,21 +1477,33 @@ legend("topright",inset=0.03, cex=0.65, y.intersp = 1.2, x.intersp = 1.2,
        legend=leyenda.clas, fill=mis_colores2, title="Leyenda")
 ```
 
+![](./Auxiliares/Clas_RF2.png) 
+
 Las zonas en las que existen cultivos y "otros" en el área de estudio, en color verde y amarillo, son las que se van a "enmascarar" en el siguiente paso para que no afecten al resultado del análisis de severidad del incendio.
 
 Así, se procede a umbralizar esta imagen, clasificando como *NA* los valores mayores que 2, es decir, todo lo que no es matorral ni forestal de acuerdo a la leyenda de la clasificación. Realizada la reclasificación, se va a visualizar el resultado obtenido, aplicando este resultado como máscara al ráster obtenido tras aplicar la primera máscara de NDVI.
 
 ```r
+#Reclasificar clasificación para generar máscara
 mascara.Clas.RF <- reclassify(Clas_RF,
                               c(-Inf,2,1, 2.1,Inf,NA))
 
+#Visualizar el resultado
 plot(mascara.Clas.RF,col="red",legend=FALSE, main="Máscara por tipos de vegetación")
+```
 
+![](./Auxiliares/Mascara_Clas_RF.png) 
+
+```r
+#Aplicar la máscara al índice dNBR umbralizado y ya enmascarado por vegetación activa
 dNBR.mascara.2<-mask(dNBR.mascara.1,mascara.Clas.RF)
 
+#Visualizar el resultado
 plot(dNBR.mascara.2,col = mis_colores, legend=FALSE, main="Severidad del incendio en el área forestal")
 legend("topright", inset=0.05, legend =rev(leyenda), fill = rev(mis_colores), cex=0.5) 
 ```
+
+![](./Auxiliares/Mascara_Clas_RF.png) 
 
 Este resultado es mucho más fácil de interpretar, ya que solo está aportando información respecto de las zonas forestales y de matorral.
 
@@ -1362,12 +1533,22 @@ perimetro <- as_Spatial(st_as_sf(st_as_stars(dNBR.mascara.2),
 
 #Comprobación de la validez de las geometrías resultantes
 rgeos::gIsValid(perimetro)
+```
 
+```r annotate
+## [1] FALSE
+```
+
+```r
 #Eliminación de cruces y auto-intersecciones
 perimetro <- rgeos::gBuffer(perimetro, byid = TRUE, width = 0)
 
 #Comprobación de la validez de las geometrías resultantes
 rgeos::gIsValid(perimetro)
+```
+
+```r annotate
+## [1] TRUE
 ```
 
 Para extraer las pequeñas superficies detectadas erróneamente como quemadas se procede a disolver todas las geometrías de la capa *'perímetro'* con la función *st_union()*, y así unir todas las zonas quemadas independientemente de su severidad, para, posteriormente, separar cada geometría, cada polígono, independientemente. 
@@ -1441,7 +1622,20 @@ dNBR_umb_peri <- mask(dNBR_umb,perimetro.def)
 #Recorta la imagen por la extensión del shapefile
 dNBR_umb_recort <- crop(dNBR_umb_peri,perimetro.def)
 dNBR_umb_recort
+```
 
+```r annotate
+## class      : RasterLayer 
+## dimensions : 342, 524, 179208  (nrow, ncol, ncell)
+## resolution : 30, 30  (x, y)
+## extent     : 457695, 473415, 4118745, 4129005  (xmin, xmax, ymin, ymax)
+## crs        : +proj=utm +zone=30 +datum=WGS84 +units=m +no_defs 
+## source     : memory
+## names      : layer 
+## values     : 1, 6  (min, max)
+```
+
+```r
 #Selección de píxeles con valores 1, 2 y 3
 dNBR_umb_recort[dNBR_umb_recort>3]<-NA
 ```
@@ -1462,6 +1656,8 @@ dNBR_umb_recort <- ratify(dNBR_umb_recort)
 mapview(dNBR_umb_recort,col.regions=rev(mis_colores3))
 ```
 
+![](./Auxiliares/Perimetro.png) 
+
 ```r
 #Gráfico de distribución de grados de severidad del incendio
 barplot(dNBR_umb_recort,
@@ -1473,7 +1669,9 @@ legend("topright",
        fill=rev(mis_colores3), cex=0.65, y.intersp = 1.2, x.intersp = 1.2)
 ```
 
-Resulta evidente que el grado de severidad del incendio más frecuente es el de "severidad moderada" (B).
+![](./Auxiliares/Perimetro_barplot.png) 
+
+Resulta evidente que el grado de severidad del incendio más frecuente es el de "severidad alta" (A).
 
 Se va a volver a representar el gráfico de barras de distribución de valores de dNBR pero contemplando la superficie en hectáreas de cada valor. 
 
@@ -1487,7 +1685,15 @@ valores<-getValues(dNBR_umb_recort)
 
 #Tabla con el número de píxeles de cada uno de los valores
 table(valores)
+```
 
+```r annotate
+## valores
+##     1     2     3 
+## 31949 26221  9035
+```
+
+```r
 #Se selecciona cada valor para construir un vector que los contenga
 pix_3 <- length(subset(valores, valores == 3))
 pix_2 <- length(subset(valores, valores == 2))
@@ -1499,6 +1705,10 @@ valores_pixel <- c(pix_3,pix_2,pix_1)
 #lo que equivale a 900m2 o 0.09 hectareas
 #Comprobación de la resolución espacial del raster
 res(dNBR_umb_recort)
+```
+
+```r annotate
+## [1] 30 30
 ```
 
 ```r
@@ -1531,14 +1741,28 @@ Por último, se visualizan ambas capas con la librería *MapView* y se comparan 
 perimetro.def<-st_union(perimetro.def)
 
 mapview(perimetro.manual,col.regions="red")+
-  mapview(perimetro.def,col.regions="green",burst=TRUE, hide=FALSE) 
+  mapview(perimetro.def,col.regions="green",burst=TRUE, hide=FALSE)
+```
 
+![](./Auxiliares/Perimetro_barplot.png) 
 
+```r
 #Calcular la superficie
 perimetro.manual$supf_ha<-as.numeric(st_area(perimetro.manual)/10000)
 perimetro.def$supf_ha<-as.numeric(st_area(perimetro.def)/10000)
 
 sum(perimetro.manual$supf_ha)
+```
+
+```r annotate
+## [1] 6396.037
+```
+
+```r
 sum(perimetro.def$supf_ha)
+```
+
+```r annotate
+## [1] 6054.84
 ```
 
