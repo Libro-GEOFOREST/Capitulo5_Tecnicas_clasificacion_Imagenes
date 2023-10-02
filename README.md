@@ -1004,6 +1004,7 @@ sm.density.compare(valores.pixeles$B5,valores.pixeles$clase,xlab="B5",
                    col=miscolores)
 sm.density.compare(valores.pixeles$B7,valores.pixeles$clase,xlab="B7",
                    col=miscolores)
+par(mfrow=c(1,1))
 ```
 
 ![](./Auxiliares/Firma_espectral2.png) 
