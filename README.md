@@ -401,7 +401,7 @@ Para guardar la imagen generada se utiliza la función raster:
 
 ```r
 writeRaster(img_preincendio,
-            filename="C:/DESCARGA/Indices_vegetacion/img_preincendio.tif",  #Adaptar la ruta donde se va a guardar la imagen
+            filename="C:/DESCARGA/img_preincendio.tif",  #Adaptar la ruta donde se va a guardar la imagen
             format = "GTiff", # guarda como geotiff
             datatype='FLT4S') # guarda en valores decimales
 ```
@@ -627,7 +627,7 @@ plotRGB(img_postincendio, r=6,g=5,b=3,scale=1,stretch='lin',
 ```r
 #Guardar imagen postincendio
 writeRaster(img_postincendio,
-            filename="C:/DESCARGA/Indices_vegetacion/img_postincendio.tif", #Adaptar la ruta donde se va a guardar la imagen
+            filename="C:/DESCARGA/img_postincendio.tif", #Adaptar la ruta donde se va a guardar la imagen
             format = "GTiff", # guarda como geotiff
             datatype='FLT4S') # guarda en valores decimales
 ```
@@ -841,7 +841,227 @@ Continuando con lo visto anteriormente, en este ejercicio se seguirá explorando
 
 Para empezar, es preciso tener el fichero ESRI shapefile, previamente descargado de la plataforma MOOC, ***clasificacion***. Este fichero contiene el **esquema de clasificación**, que servirá para realizar la clasificación. Las clases temáticas definidas son: **Forestal, Matorral, Cultivos y Otros**. 
 
-# 4. EVALUACION DE LA CLASIFICACIÓN SUPERVISADA
+![](./Auxiliares/Clasificacion.png) 
+
+Será necesario también tener instalada la librería [**Mapview**](https://cran.r-project.org/web/packages/mapview/mapview.pdf) que permite crear visualizaciones interactivas de datos de forma rápida y sencilla sobre una base cartográfica. Con ella, se pueden visualizar los objetos que van a servir de entrenamiento de la clasificación, contenidos en la variable o campo **'CLASE'**, todo ello, sobre un mapa interactivo.
+
+
+```r
+#Abrir archivo con los datos de referencia
+library(sf)
+library(mapview)
+
+Referencia<-st_read("C:/DESCARGA/clasificacion.shp") #Adaptar a la ruta donde se ha descargado el fichero
+
+mapview(Referencia,zcol="CLASE")
+```
+
+Se puede hacer zoom sobre el mapa para visualizar las distintas zonas de entrenamiento. También es posible cambiar el mapa base para utilizar la colección de imágenes a nivel mundial que proporciona ESRI. 
+
+![](./Auxiliares/Clasificacion_mapview.png) 
+
+### 3.1.1. Preparar la fase de entrenamiento
+
+La siguiente etapa consiste en definir las áreas de entrenamiento, que son áreas con una clase temática única y homogéneas, que representan fielmente cada clase. Posteriormente, será necesario realizar una evaluación estadística de este entrenamiento.
+
+Se va a tomar una muestra aleatoria de 100 puntos, 25 en cada clase, distribuidos por la extensión de la capa almacenada en el objeto *Referencia* mediante *st_sample*. Obtenidos los puntos, se va a formar una tabla o dataframe con la función *st_join* que contenga los puntos con la información de clases y las sus posiciones geográficas. 
+
+```r
+#Generar semilla para asegurar la repetitividad del ejercicio
+set.seed(1)
+
+#Generar puntos al azar de los polígonos de 100 puntos
+puntos.ref <- st_sample(Referencia, c(25,25,25,25), type='random',exact=TRUE)
+
+puntos.ref<-st_sf(puntos.ref)
+
+puntos.ref<-st_join(puntos.ref,Referencia)
+
+mapview(Referencia,zcol="CLASE")+mapview(puntos.ref,alpha=0)
+```
+
+En el mapa resultante se pueden observar los puntos, que, tras extraer el valor del píxel en el que se sitúen, serán las áreas de entrenamiento.  
+
+Se introduce, además, la imagen con todas las bandas guardadas.
+
+```r
+#Se carga la imagen guardada en los pasos anteriores
+img_preincendio<-stack('C:/DESCARGA/img_preincendio.tif') #Adaptar la ruta donde se ha guardado la imagen
+```
+
+Una vez que tenemos los puntos y la imagen, toca extraer el valor correspondiente al píxel donde se sitúa. Para ello, primero habrá que extraer las coordenadas de nuestros puntos en forma de matriz mediante la función *st_coordinates* para que sea compatible con el objeto *'Raster Stack'* que contiene la imagen preincendio de la que extraeremos el valor de ND de cada píxel con la función *extract*. Además, para facilitar su manipulación, se asignará un nombre más simple a cada variable. 
+
+```r
+#Extraer las coordenadas de la muestra de puntos seleccionada al azar
+xy <- st_coordinates(puntos.ref)
+
+#Extraer los valores de los pixeles
+valores.pixeles <- extract(img_preincendio, xy)
+
+#Convertirlo en una tabla
+valores.pixeles<-as.data.frame(valores.pixeles)
+
+names(valores.pixeles)
+
+#Cambiar el nombre de los campos para que hagan referencia clara a la banda a la que pertenecen
+names(valores.pixeles)<-c("B1","B2","B3","B4","B5","B7")
+
+head(valores.pixeles)
+```
+
+En el siguiente paso, consiste en aplicar un bucle **for**, en el que para cada fila (*nrow*) se va a buscar su valor de *CLASE* desde el objeto *puntos.ref* y se va a almacenar en un nuevo campo creado como *clase*. 
+
+```r
+#Añadir el valor del campo CLASE de los poligonos de referencia
+for(i in seq(nrow(puntos.ref))){
+  valores.pixeles$clase[i]<-puntos.ref$CLASE[i]
+}
+
+#Numero de pixeles pertenecientes a cada clase
+table(valores.pixeles$clase)
+```
+
+Esta **tabla de frecuencias** visualizada en pantalla muestra un resumen del nº de puntos de cada clase existente.
+
+### 3.1.2 Firma espectral de las áreas de entrenamiento
+
+Se va a representar la firma espectral perteneciente a cada una de las clases mediante un gráfico de líneas. Lo primero será adecuar los datos. La función *aggregate* va a dividir los datos del data frame *'valores.pixeles'* en subconjuntos por su variable *clase*, calculando la reflectancia media de cada clase en cada banda, con los que se obtendrá el gráfico de firmas espectrales.
+
+```r
+#Calculo de reflectancia media por clase
+perfiles<-aggregate(valores.pixeles[,c(1:6)],list(valores.pixeles$clase),mean)
+
+miscolores <- c("blue","red", "darkgreen","yellow3","black")
+
+perfiles<-as.matrix(perfiles)
+rownames(perfiles)<-perfiles[,1]
+
+perfiles<-perfiles[,-1]
+
+#Grafico
+plot(0, ylim=c(0,0.3), xlim = c(1,6), type='n', xlab="Bands", 
+     ylab = "Reflectance",xaxt="n")
+axis(1,at=1:6, labels=c("B1","B2","B3","B4","B5","B7"))
+for (i in 1:nrow(perfiles)){
+  lines(perfiles[i,], type = "l", lwd = 3, lty = 1, col = miscolores[i])
+}
+#Titulo del grafico
+title(main="Perfiles espectrales Landsat")
+#Leyenda
+legend("topleft", legend=rownames(perfiles),
+       cex=0.75, y.intersp = 0.75, col=miscolores, lty = 1, lwd =3, bty = "n",)
+```
+
+El gráfico anterior muestra la firma espectral de cada clase se acuerdo a las áreas de entrenamiento. ¿Os parece que su forma se asemeja a la realidad?
+
+Analizando el gráfico, puede observarse que la separabilidad de las clases parece, en general, correcta, puesto que no hay firmas iguales que ocupen los mismos valores. No obstante, en la banda 2 las clases cultivos y otros se confunden pero tienden a separarse en el resto de las bandas. Esto sería indicativo de que esta banda no aporta información para discriminar estas clases.  
+
+Examinando la zona de estudio, se puede explicar parte del comportamiento espectral de estas clases. Por un lado, los cultivos en regadío dentro de la clase *cultivos*, así como las parcelaciones con jardines en riego de las zonas urbanas, que figuran agrupadas como *otros* hacen que ambas clases se asemejen espectralmente. Por otro lado, los procesos de decaimiento forestal de la zona convierten a la clase *forestal* como la que menos reflectancia genera en prácticamente todas las bandas de la imagen. 
+
+En el siguiente punto se va a evaluar, también de forma gráfica, la distribución de densidades de cada una de las clases por cada banda:
+
+```r
+#Histograma de predictores
+
+#install.packages("sm")
+library(sm)
+par(mfrow=c(2,3))
+sm.density.compare(valores.pixeles$B1,valores.pixeles$clase,xlab="B1",
+                   col=miscolores)
+sm.density.compare(valores.pixeles$B2,valores.pixeles$clase,xlab="B2",
+                   col=miscolores)
+sm.density.compare(valores.pixeles$B3,valores.pixeles$clase,xlab="B3",
+                   col=miscolores)
+sm.density.compare(valores.pixeles$B4,valores.pixeles$clase,xlab="B4",
+                   col=miscolores)
+sm.density.compare(valores.pixeles$B5,valores.pixeles$clase,xlab="B5",
+                   col=miscolores)
+sm.density.compare(valores.pixeles$B7,valores.pixeles$clase,xlab="B7",
+                   col=miscolores)
+```
+
+Fijándose bien, es posible discernir que la clase *cultivos* tiene una distribución bimodal en todas las bandas. Es posible que se deba a la diferencia en la zona de estudio entre cultivos en regadío y cultivos en secano.  
+
+También se distingue una distribución con tendencia bimodal en la clase *otros* en algunas bandas. Es probable que la diversidad de objetos y características de la cubierta terrestre que engloba dicha clase expliquen esta anomalía.  
+
+### 3.2. Aplicación de algoritmos para realizar la clasificación supervisada
+
+Una vez validada la fase de preparación de las zonas de entrenamiento, se va a realizar la clasificación. Se probarán dos clasificaciones: una por el método de **Máxima probabilidad** y otra por el algoritmo **Random Forest**. Se empleará la librería **RStoolBox**, cuya función **superClass** será la encargada de ejecutar la clasificación supervisada. Para más detalles sobre la función, aconsejamos consultar la ayuda de la misma tecleando $?superClass$ en una línea de RStudio.
+
+#### 3.2.1 Clasificación supervisada por el método de máxima probabilidad
+
+Se trata de un método exigente en cuanto a la distribución de los datos puesto que asume que los datos siguen una función de distribución normal para asignar la probabilidad de que un pixel pertenezca a una clase.  
+
+Dentro de la función *superClass*, se selecciona este método a través del parámetro model, que tomara el valor de **"mlc"**. También se va a realizar una partición del 70% de la muestra de entrenamiento *trainPartition=0.70*, lo que va a permitir separar la muestra entre una selección de puntos que servirán para generar el modelo de clasificación y el resto, que servirá para evaluarlo.  
+
+```r
+#Clasificacion por el modelo de maxima probabilidad
+library(RStoolbox)
+puntos.ref<-as_Spatial(puntos.ref)
+
+Clas.Max.Prob<- superClass(img_preincendio, trainData = puntos.ref, 
+                    trainPartition =0.70, responseCol = "CLASE",
+                    model = "mlc", tuneLength = 1)
+```
+
+En esta ocasión, para cartografiar los resultados se va a emplear una rampa de color distinta:
+
+```r
+miscolores2 <- viridis::viridis(4)
+
+plot(Clas.Max.Prob$map,col=miscolores2,legend = FALSE)
+legend("topright",cex=0.65, y.intersp = 0.55,x.intersp = 0.5,
+       legend = levels(as.factor(puntos.ref$CLASE)), 
+       fill = miscolores2 ,title = "",
+       inset=c(0,0))
+```
+
+#### 3.2.2 Clasificación supervisada por el método de random forest
+
+Este método, basado en técnicas de *Machine Learning*. Se trata de un método mucho más versátil de aprendizaje automático basado en árboles de decisión y que no necesita que la distribución de los datos siga la normalidad.  
+
+Del mismo modo que en la clasificación anterior, se selecciona el modelo a través del parámetro *model*, que en este caso toma el valor **"rf"**.
+
+```r
+#Clasificacion por Random Forest
+library(randomForest)
+Clas.RF<- superClass(img_preincendio, trainData = puntos.ref, 
+                   trainPartition =0.70, responseCol = "CLASE",
+                   model = "rf", tuneLength = 1)
+
+plot(Clas.RF$map,col=miscolores2,legend = FALSE)
+legend("topright",cex=0.65, y.intersp = 0.55,x.intersp = 0.5,
+       legend = levels(as.factor(puntos.ref$CLASE)), 
+       fill = miscolores2 ,title = "",
+       inset=c(0,0))
+```
+
+#### 4.2.3 Guardar clasificación generada.
+
+Para guardar las imagen de la clasificaciones generadas se utiliza la función raster:   
+
+```r
+#Guarda la imagen de la clasificación supervisada por máxima probabilidad
+writeRaster(Clas.Max.Prob$map,
+            filename="C:/DESCARGA/Clas_Max_Prob.tif",            #Adaptar la ruta donde se va a guardar la clasificación
+            format = "GTiff", # guarda como geotiff
+            datatype='FLT4S') # guarda en valores decimales
+
+#Guarda la imagen de la clasificación supervisada por Random Forest
+writeRaster(Clas.RF$map,
+            filename="C:/DESCARGA/Clas_RF.tif",                  #Adaptar la ruta donde se va a guardar la clasificación
+            format = "GTiff", # guarda como geotiff
+            datatype='FLT4S') # guarda en valores decimales
+```
+
+En este caso, también guardaremos el resto de características de la clasificación para su evaluación posterior.
+
+```r
+#Guardar objetos de R
+save(Clas.Max.Prob,Clas.RF,file="C:/DESCARGA/Clasificaciones_supervisadas.RData")  #Adaptar la ruta donde se va a guardar la clasificación
+```
+
+## 3.3. Evaulación de la clasificación supervisada
 
 Para comparar entre distintas clasificaciones y/o estimar su exactitud de forma cuantitativa con la realidad del terreno se emplea un instrumento conocido como matriz de confusión, que muestra la manera en que el modelo de clasificación "se confunde" cuando hace predicciones.  
 
@@ -855,20 +1075,470 @@ Por otro lado, también se emplea el índice kappa, que consiste en una medida e
 |0.61-0.80      |Buena                     |
 |0.81-1.00      |Muy buena                 |
 
-
-
 En este ejercicio se va a evaluar la bondad de la clasificación supervisada basándonos en la matriz de confusión y el índice kappa.  
 
-## 4.1. Introducción de la clasificación a valorar.
+### 3.3.1. Introducción de la clasificación a valorar.
 
-Se introduce el objeto de R con la información de las clasificaciones realizadas.
+Si se vuelve a iniciar una nueva sesión en R para continuar con el ejercicio será necesario introducir el objeto de R con la información de las clasificaciones realizadas en el paso anterior.
 
-# 5. OBTENCIÓN DEL PERÍMETRO Y LA SEVERIDAD DEL INCENDIO
+```r
+#Se carga los datos de las clasificaciones
+load("C:/DESCARGA/Clasificaciones_supervisadas.RData")  #Adaptar la ruta donde se ha guardado la clasificación
+```
+
+### 3.3.2. Evaluación.
+
+Durante la ejecución de la función *superClass* se calcula el modelo de clasificación, el 70% del total que se indicó en el parámetro *trainPartition =0.70*. Posteriormente, con esos mismos datos de entrenamiento la función computa una predicción de la clasificación según el modelo dividiendo los datos de entrenamiento en 5 grupos. Esto son las k=5 iteraciones. Los resultados son evaluados a través de una matriz de confusión en la que se enfrentan las clases a la que pertenecen los datos de entrenamiento con las clases predichas por el modelo. Es lo que se conoce como una validación cruzada de k iteraciones, *5-fold Cross-Validated Confusion Matrix*. El valor final de precisión que se indica es una media de todas las iteraciones.   
+
+Por otro lado, la función también calcula el índice kappa de la clasificación.  
+
+Aplicado al estudio:
+
+```r
+#Resultados de precisión de la clasificación por máxima probabilidad en la muestra de entrenamiento
+#[[1]] contiene la media de las medidas de precisión
+#[[2]] contiene la matriz de confusión media de las iteraciones
+Clas.Max.Prob$modelFit
+
+#Detalle de los resultados con valores medios y desviaciones estandar de las medidas de precisión
+Clas.Max.Prob$model$results
+
+#Detalle de los resultados con las medidas de precisión de cada iteración
+Clas.Max.Prob$model$resample
+```
+
+Además, con los datos separados para la evaluación (el 30% restante indicado en el parámetro *trainPartition =0.70*), se vuelve a calcular la matriz de confusión entre los valores reales de la clase a la que pertenece ese punto en el terreno y los valores predichos por el modelo.
+
+```r
+#Resultados generales de precisión de la clasificación por máxima probabilidad en la muestra de evaluación
+Clas.Max.Prob$validation$performance$overall
+
+#Matriz de confusión en la muestra de evaluación
+Clas.Max.Prob$validation$performance$table
+```
+
+Igualmente, para el modelo de clasificación Random Forest:  
+
+```r
+#Resultados de precisión de la clasificación por el método de Random Forest
+#[[1]] contiene la media de las medidas de precisión
+#[[2]] contiene la matriz de confusión media de las iteraciones
+Clas.RF$modelFit
+
+#Detalle de los resultados con valores medios y desviaciones estandar de las medidas de precisión
+Clas.RF$model$results
+
+#Detalle de los resultados con las medidas de precisión de cada iteración
+Clas.RF$model$resample
+
+#Resultados generales de precisión de la clasificación por el método de Random Fforest en la muestra de evaluación
+Clas.RF$validation$performance$overall
+
+#Matriz de confusión en la muestra de evaluación
+Clas.RF$validation$performance$table
+```
+
+A la vista de las soluciones, puede concluirse que la clasificación por el método de Random Forest arroja, en este caso, mejores resultados. 
+
+
+# 4. OBTENCIÓN DEL PERÍMETRO Y LA SEVERIDAD DEL INCENDIO
 
 En este ejercicio se va a trabajar tanto con la imagen Landsat previa al incendio como con la imagen posterior al mismo en forma de los índices calculados en ejercicios anteriores. El objetivo es **determinar el perímetro y grado de severidad del incendio** ocurrido en la zona de estudio, Granada, en el verano de 1993.
 
-
-## 5.1. Preparación de las imágenes
+## 4.1. Preparación de las imágenes
 
 El primer paso a realizar será cargar las imágenes calculadas para el índice NBR pre-incendio y post-incendio que se obtuvieron en la actividad de **"Índices de vegetación"**. 
+
+```r
+#Introducir los indices NBR guardados anteriormente
+NBR_pre<-raster("C:/DESCARGA/Indices_vegetacion/NBR_pre.tif")   #Adaptar la ruta donde se ha guardado el índice
+NBR_post<-raster("C:/DESCARGA/Indices_vegetacion/NBR_post.tif") #Adaptar la ruta donde se ha guardado el índice
+```
+
+## 4.2. Cálculo del delta del índice NBR (dNBR *differenced Normaliced Burn Ratio*)
+
+En la actividad anterior obtuvimos estas imágenes, **NBR_preincendio** y **NBR_postincendio**, que, recordemos, se obtenían de acuerdo a la siguiente relación matemática: $$ NBR= \frac{SWIR - NIR}{SWIR + NIR} $$
+
+Ahora se va a calcular la diferencia entre ambas imágenes, el dNBR, restando a la imagen post-incendio la imagen pre-incendio. 
+
+```r
+dNBR <- (NBR_pre) - (NBR_post)
+
+plot(dNBR, main="dNBR")
+```
+
+## 4.3. Clasificación del mapa dNBR en niveles de severidad
+
+Con el *raster layer* obtenido en el paso anterior, que contiene los valores dNBR, se va a realizar una clasificación en cuanto a niveles de severidad y regeneración según los umbrales fijados en el proyecto [**FIREMON** (Lutes *et al*., 2006)](https://www.fs.usda.gov/treesearch/pubs/24042). Tomando como referencia esos rangos, se va a elaborar una umbralización del dNBR calculado según la información contenida en el objeto *NBR_rangos*, dando valores de 1 a 7 a cada rango.
+
+
+| Rango de valores de dNB    | Nivel de severidad del incendio     |
+|:--------------------------:|:-----------------------------------:|
+| dNBR < a -0.500            | Severidad alta                      |
+| -0.500 a -0.255            | Severidad moderada                  |
+| -0.250 a -0.100            | Severidad baja                      |
+| -0.100 a  0.100            | No quemado                          |
+|  0.100 a  0.270            | Bajo rebrote posterior al fuego     |
+|  0.270 a  0.660            | Alto rebrote posterior al fuego     |
+| dNBR > a  0.660            | Muy alto rebrote posterior al fuego |
+
+
+```r
+# En RStudio Cloud cargamos los datos de la tabla anterior. Así se establece el rango de valores para umbralizar la información contenida en dNBR
+
+NBR_rangos <- c(-Inf, -.50, 1, #Severidad alta
+                -.50, -.25, 2, #Severidad moderada
+                -.25, -.10, 3, #Severidad baja 
+                -.10,  .10, 4, #No quemado
+                 .10,  .27, 5, #Bajo rebrote posterior al fuego 
+                 .27,  .66, 6, #Alto rebrote posterior al fuego
+                 .66, +Inf, 7) #Muy alto rebrote posterior al fuego
+```
+
+Es importante tener en cuenta que la tabla de umbralización anterior es una *interpretación cuantitativa* de lo que realmente significan los resultados de dNBR. El término "severidad" es un término cualitativo que podría cuantificarse de diferentes formas. Por ejemplo, ¿quién puede decir que un valor de 0.5 no podría ser representativo de "alta gravedad" frente a 0.660? Por eso, la mejor manera de asegurarse de que la umbralización representa lo que realmente está sucediendo en el suelo en términos de severidad del fuego es **verificar las condiciones reales en el suelo**.  
+
+Lo primero será convertir esta tabla de rangos en matriz y, a continuación, se umbralizará con estos rangos los valores del dNBR con la función *reclassify*.
+
+```r
+# Convierte los valores de rangos en matriz
+class.matrix <- matrix(NBR_rangos, ncol = 3, byrow = TRUE)
+
+
+# Umbralización 
+dNBR_umb <- reclassify(dNBR, NBR_rangos,  right=NA)
+```
+
+### 4.4. Creación del mapa dNBR umbralizado 
+
+En primer lugar, se va a crear la leyenda y un vector de colores personalizado que asignará un color a cada una de las clases de severidad establecidas por colores que resulten significativos al usuario del mapa.
+
+```r
+# Crea el texto que se introducirá en la leyenda
+leyenda=c("Severidad alta",
+          "Severidad moderada",
+          "Severidad baja",
+          "No quemado",
+          "Bajo rebrote posterior al fuego",
+          "Alto rebrote posterior al fuego",
+          "Muy alto rebrote posterior al fuego")
+
+# Establecer los colores del mapa de severidad
+mis_colores=c("purple",        #Severidad alta
+              "red",           #Severidad moderada
+              "orange2",       #Severidad baja 
+              "yellow2",       #No quemado
+              "limegreen",     #Bajo rebrote posterior al fuego 
+              "green",         #Alto rebrote posterior al fuego
+              "darkolivegreen")#Muy alto rebrote posterior al fuego
+```
+
+Por último, visualizamos el mapa:
+
+```r
+# Visualizar el mapa con ejes
+plot(dNBR_umb, col = mis_colores,
+     main = 'dNBR umbralizado')
+
+# Visualizar el mapa sin ejes y con la leyenda creada
+plot(dNBR_umb, col = mis_colores,legend=FALSE,box=FALSE,axes=FALSE,
+     main = 'Severidad del incendio')
+legend("topright", inset=0.05, legend =rev(leyenda), fill = rev(mis_colores), cex=0.5) 
+```
+
+## 4.5.  Estimar el perímetro del incendio
+
+El índice dNBR puede ser una herramienta poderosa para identificar píxeles que tienen una alta probabilidad de estar *"quemados"*. Sin embargo, es importante saber que este índice también es sensible al cambio en el contenido en agua de la superficie y, por lo tanto, a veces los píxeles clasificados como de *"severidad alta"* pueden ser agua, superficies de alta montaña nevadas y también cultivos en regadío. Debido a esto, es importante **enmascarar estas áreas** antes de realizar cualquier análisis cuantitativo de los resultados de diferencia de NBR (dNBR). 
+
+
+Una **máscara** consiste en una capa ráster que contiene píxeles que no se utilizarán en el análisis y, por tanto, tienen asignado un **valor NA**. Así conseguimos que estos píxeles no participen en los resultados.
+
+![](C:/MOOC_TD/Perimetro_severidad/Captura4.png)
+
+
+#### Obtención de la 1ª máscara: zonas con vegetación activa previa al fuego
+
+Normalmente, los píxeles en zonas con vegetación sana o densa reflejan más luz infrarroja, lo que da como resultado valores altos de NDVI. Los píxeles en zonas con vegetación enferma o donde no hay vegetación absorben más luz infrarroja, lo que da como resultado valores NDVI bajos o incluso negativos. Según el **valor NDVI**, se puede identificar la vegetación en una región como **vegetación densa, vegetación moderada, vegetación escasa o sin vegetación**. El rango de valores NDVI que se suele emplear para cada tipo de situación:
+
+| Tipo de vegetación   | Rango de valores NDVI     |
+|:--------------------:|:-------------------------:|
+| Vegetación densa     |  NDVI >= 0.5              |
+| Vegetación moderada  |  0.4 a 0.5                |
+| Vegetación escasa    |  0.2 a 0.4                |
+| Sin vegetación       |  NDVI <= 0.2              |
+
+De acuerdo a esta clasificación, se va a crear la primera máscara que *"tapará"* los píxeles donde no exista vegetación mediante el ráster NDVI previo al incendio.
+
+En primer lugar, se carga en el entorno esta imagen:
+
+```r 
+NDVI_pre<-raster('C:/MOOC_TD/indices_vegetacion/NDVI_pre.TIF')    #Adaptar la ruta donde se ha guardado el índice
+```
+
+Ahora, se reclasifica tomando como referencia los valores de la tabla de rangos NDVI. Se asignarán valores NA a aquellos píxeles con valor NDVI < 0.2, es decir, donde no hay vegetación. El resto de píxeles, donde el NDVI indica la existencia de vegetación de algún tipo, con valores NDVI > 0.2, se clasificarán con valor 1. 
+
+```r
+mascara.NDVI <- reclassify(NDVI_pre,
+                           c(-Inf,0.2,NA, 0.21,Inf,1))
+
+plot(mascara.NDVI,col="red",legend=FALSE, main="Máscara vegetación activa")
+```
+
+En la imagen anterior se observa el efecto de esta máscara, coloreando en rojo las zonas con vegetación. Ahora, se va a aplicar la función *mask*, empleanto esta máscara y la imagen ráster umbralizada. Se observa como ahora aparecen en blanco, sin valor, aquellas zonas en las que el NDVI era inferior a 0.2, evitando así errores de interpretación. 
+
+```r
+dNBR.mascara.1<-mask(dNBR_umb,mascara.NDVI)
+
+plot(dNBR.mascara.1,col = mis_colores, main = 'Severidad del incendio en zonas con vegetación', legend=FALSE)
+legend("topright", inset=0.05, legend =rev(leyenda), fill = rev(mis_colores), cex=0.5) 
+```
+
+#### Obtención de la 2ª máscara: clasificación forestal
+
+Para centrar el estudio en la zona forestal y de matorral y así descartar de la zona incendiada los cultivos en regadío y otras superficies, se genera una segunda máscara empleando uno de los ráster obtenidos en la  **clasificación supervisada** . En concreto, se va a emplear el obtenido por el *método de Random Forest*, que fue el que mejores resultados obtuvo en la validación de la clasificación.
+
+Lo primero, al igual que en la máscara creada a partir del índice NDVI, será cargar la imagen de la clasificación supervisada:
+
+```r
+Clas_RF<-raster('C:/DESCARGA/Clas_RF.tif')       #Adaptar la ruta donde se ha guardado la imagen de la clasificación
+
+```
+
+De acuerdo a la clasificación que se realizó en suelos "Forestal", "Matorral", "Cultivos" y "Otros", se construye la leyenda. Para cambiar la escala de colores, se escoge el paquete 'Viridis', asignando 4 tonos.
+
+```r
+leyenda.clas=c("1. Forestal",
+               "2. Matorral",
+               "3. Cultivos",
+               "4. Otros")
+
+mis_colores2 <- viridis::viridis(4)
+
+plot(Clas_RF,col=mis_colores2,legend=FALSE, main="Clasificación supervisada RF")
+legend("topright",inset=0.03, cex=0.65, y.intersp = 1.2, x.intersp = 1.2,
+       legend=leyenda.clas, fill=mis_colores2, title="Leyenda")
+```
+
+Las zonas en las que existen cultivos y "otros" en el área de estudio, en color verde y amarillo, son las que se van a "enmascarar" en el siguiente paso para que no afecten al resultado del análisis de severidad del incendio.
+
+Así, se procede a umbralizar esta imagen, clasificando como *NA* los valores mayores que 2, es decir, todo lo que no es matorral ni forestal de acuerdo a la leyenda de la clasificación. Realizada la reclasificación, se va a visualizar el resultado obtenido, aplicando este resultado como máscara al ráster obtenido tras aplicar la primera máscara de NDVI.
+
+```r
+mascara.Clas.RF <- reclassify(Clas_RF,
+                              c(-Inf,2,1, 2.1,Inf,NA))
+
+plot(mascara.Clas.RF,col="red",legend=FALSE, main="Máscara por tipos de vegetación")
+
+dNBR.mascara.2<-mask(dNBR.mascara.1,mascara.Clas.RF)
+
+plot(dNBR.mascara.2,col = mis_colores, legend=FALSE, main="Severidad del incendio en el área forestal")
+legend("topright", inset=0.05, legend =rev(leyenda), fill = rev(mis_colores), cex=0.5) 
+```
+
+Este resultado es mucho más fácil de interpretar, ya que solo está aportando información respecto de las zonas forestales y de matorral.
+
+Se guarda el resultado en formato GeoTIFF:
+
+```r
+writeRaster(dNBR.mascara.2,
+             filename="C:/DESCARGA/dNBR.mascara.2.tif",        #Adaptar la ruta donde se va a guardar el archivo
+             format = "GTiff", # guarda como geotiff
+             datatype='FLT4S', # guarda en valores decimales
+             overwrite=TRUE) 
+```
+
+
+### 4.6. Poligonizar la clasificación del incendio. Cálculo de superficies
+
+Ahora se va a vectorizar el resultado obtenido convirtiendo a polígonos el ráster anterior y seleccionando únicamente los píxeles clasificados como quemados, las clases 1, 2 y 3, según el dNBR, es decir, aquellos clasificados como "Severidad alta", "Severidad moderada" y "Severidad baja. Cuando los polígonos son complejos, es necesario comprobar la validez de las geometrías generadas, puesto que, a veces, se producen auto-intersecciones y cruces entre los objetos espaciales, que, de no corregirse, impedirían continuar el procesado. Se especifica que disuelva en un polígono aquellos de igual valor de atributo.
+
+```r
+#Selección de píxeles con valores 1, 2 y 3
+dNBR.mascara.2[dNBR.mascara.2>3]<-NA
+
+#Poligonización
+library(stars)
+perimetro <- as_Spatial(st_as_sf(st_as_stars(dNBR.mascara.2),
+                                 as_points = FALSE, merge = TRUE)) 
+
+#Comprobación de la validez de las geometrías resultantes
+rgeos::gIsValid(perimetro)
+
+#Eliminación de cruces y auto-intersecciones
+perimetro <- rgeos::gBuffer(perimetro, byid = TRUE, width = 0)
+
+#Comprobación de la validez de las geometrías resultantes
+rgeos::gIsValid(perimetro)
+```
+
+Para extraer las pequeñas superficies detectadas erróneamente como quemadas se procede a disolver todas las geometrías de la capa *'perímetro'* con la función *st_union()*, y así unir todas las zonas quemadas independientemente de su severidad, para, posteriormente, separar cada geometría, cada polígono, independientemente. 
+
+Las geometrías que forman parte de este incendio son las de mayor tamaño y así se seleccionan. Para no dejar atrás algunos píxeles que podrían no formar parte del foco principal, se buscan polígonos aledaños mediante un ***buffer***.
+
+```r
+library(sf)
+
+#Convierte el objeto en un sf (Simple Feature) que puede identificar la librería
+perimetro<-st_as_sf(perimetro)
+
+#Disuelve todas las geometrías en una sola
+perimetro<-st_union(perimetro)
+
+#Separa cada polígono según su geometría
+perimetro<-st_cast(perimetro,"POLYGON",do_split=TRUE)
+
+#Convierte el objeto en un sf que puede identificar la librería
+perimetro<-st_as_sf(perimetro)
+```
+
+Ahora se va a obtener la superficie en hectáreas de cada geometría y a seleccionar solo aquellos cuya superficie sea mayor que 1000 Ha.
+
+Sobre esta selección se va a aplicar un buffer que abarque 50 metros alrededor de estas geometrías. Así, se evita excluir aquellos polígonos que, correspondiendo a zonas quemadas, no pertecen al foco principal como se ha indicado.
+
+```r
+#Calcula la superficie de cada geometría. Al dividirse entre 10.000, las unidades empleadas son hectáreas
+perimetro$supf_ha<-as.numeric(st_area(perimetro)/10000)
+
+#Seleccionar los polígonos de mayor superficie
+perimetro_<-perimetro[which(perimetro$supf_ha>1000),]
+
+#Buffer de 50 m los polígonos de mayor superficie
+perimetro.buffer<-st_buffer(perimetro_,50)
+```
+
+Ahora se va a emplear el buffer calculado para obtener los polígonos que intersectan con este.
+
+```r
+#Lista de polígonos que intersectan
+interseccion<-st_intersects(perimetro.buffer,perimetro)
+
+#Convertir a vector la lista de polígonos que intersectan
+interseccion<-unlist(interseccion,recursive =FALSE)
+
+#Seleccionar los valores únicos de los polígonos que intersectan
+interseccion<-unique(interseccion)
+
+#Selección de polígonos que intersectan
+perimetro.def<-perimetro[interseccion,]
+```
+
+Se guarda el resultado en formato ESRI Shapefile:
+
+```r
+#Guardar capa del perímetro del incendio
+st_write(perimetro.def, "C:/DESCARGA/perimetro.shp") #Adaptar la ruta donde se va a guardar el archivo
+```
+
+### 4.7. Estimar la superficie quemada en cada grado de severidad 
+
+Para que el estudio se centre en la zona perimetrada del incendio, se va a recortar el ráster tomando el perímetro obtenido en el paso anterior, almacenado en el objeto *perimetro.def*.
+
+Se va a crear de nuevo una máscara con la que solo quede al descubierto la zona del incendio, recortando la imagen de acuerdo con esta. 
+
+```r
+#Enmascara la imagen por la extensión del shapefile
+dNBR_umb_peri <- mask(dNBR_umb,perimetro.def)
+
+#Recorta la imagen por la extensión del shapefile
+dNBR_umb_recort <- crop(dNBR_umb_peri,perimetro.def)
+dNBR_umb_recort
+
+#Selección de píxeles con valores 1, 2 y 3
+dNBR_umb_recort[dNBR_umb_recort>3]<-NA
+```
+
+Mediante el paquete ***MapView*** se va a representar cartográficamente el resultado de la operación realizada. Se va a crear un vector de colores personalizado con el que representar los 3 niveles de severidad.
+
+```r 
+#Seleccionamos los colores de las clases quemadas
+mis_colores3=c("orange2","red","purple")
+
+#Se llama a la librería para la creación de mapas interactivos
+library(mapview)
+
+#Caracterización del ráster como de valores discretos
+dNBR_umb_recort <- ratify(dNBR_umb_recort)
+
+#Mapa
+mapview(dNBR_umb_recort,col.regions=rev(mis_colores3))
+```
+
+```r
+#Gráfico de distribución de grados de severidad del incendio
+barplot(dNBR_umb_recort,
+        main = "Distribución de valores dNBR",
+        col = rev(mis_colores3),
+        names.arg = c("A","B","C"),las=0)
+legend("topright",
+       legend=c("A = Severidad alta","B = Sev moderada","C = Severidad baja"),
+       fill=rev(mis_colores3), cex=0.65, y.intersp = 1.2, x.intersp = 1.2)
+```
+
+Resulta evidente que el grado de severidad del incendio más frecuente es el de "severidad moderada" (B).
+
+Se va a volver a representar el gráfico de barras de distribución de valores de dNBR pero contemplando la superficie en hectáreas de cada valor. 
+
+Para ello, se obtiene el número de píxeles totales para cada grado de severidad, y en base a la resolución espacial del ráster, se obtiene la superficie. Posteriormente se incluye este dato en el gráfico de barras anterior para completar la información.
+
+```r
+#Extrae los valores del ráster del polígono
+valores<-getValues(dNBR_umb_recort)
+
+#Ahora añadimos la superficie que supone cada nivel de severidad
+
+#Tabla con el número de píxeles de cada uno de los valores
+table(valores)
+
+#Se selecciona cada valor para construir un vector que los contenga
+pix_3 <- length(subset(valores, valores == 3))
+pix_2 <- length(subset(valores, valores == 2))
+pix_1 <- length(subset(valores, valores == 1))
+
+valores_pixel <- c(pix_3,pix_2,pix_1)
+
+#Se puede comprobar que la resolución espacial del ráster corresponde a 30x30m,
+#lo que equivale a 900m2 o 0.09 hectareas
+#Comprobación de la resolución espacial del raster
+res(dNBR_umb_recort)
+```
+
+```r
+#Transformación del número de píxeles en superficie redondeado a 3 dígitos
+valores_area<-round(valores_pixel*30*30/10000,digit=3)
+
+#Gráfico de distribución de grados de severidad del incendio
+bp<-barplot(dNBR_umb_recort,
+            main = "Distribución de valores dNBR y su superficie en Ha",
+            col = rev(mis_colores3),
+            names.arg = c("A","B","C"),las=0)
+legend("topright",
+       legend=c("A = Severidad alta","B = Sev moderada","C = Severidad baja"),
+       fill=(mis_colores3),cex=0.65,y.intersp = 1.2,x.intersp = 1.2)
+text(bp, y=2500, labels=valores_area)
+```
+
+### 4.8.  Comparar el perímetro del incendio calculado por métodos tradicionales y el estimado a partir de Landsat
+
+Para finalizar la actividad, se va a comparar el resultado que se ha obtenido a partir de las imágenes Landsat en este ejercicio con el perímetro obtenido por los técnicos de Medio Ambiente de la Junta de Andalucía, disponible en la REDIAM ("Incendios históricos", facilitado en los datos para descargar.
+
+```r
+#Introducimos el límite del perímetro que los técnicos de campo calcularon descargado de REDIAM
+perimetro.manual<-st_read("C:/DESCARGA/perimetro_manual.shp") #Adaptar la ruta donde se ha descargado el archivo 
+```
+
+Por último, se visualizan ambas capas con la librería *MapView* y se comparan visualmente ambos resultados. Numéricamente, se va también a calcular las áreas de ambas capas.
+
+```r
+perimetro.def<-st_union(perimetro.def)
+
+mapview(perimetro.manual,col.regions="red")+
+  mapview(perimetro.def,col.regions="green",burst=TRUE, hide=FALSE) 
+
+
+#Calcular la superficie
+perimetro.manual$supf_ha<-as.numeric(st_area(perimetro.manual)/10000)
+perimetro.def$supf_ha<-as.numeric(st_area(perimetro.def)/10000)
+
+sum(perimetro.manual$supf_ha)
+sum(perimetro.def$supf_ha)
+```
 
