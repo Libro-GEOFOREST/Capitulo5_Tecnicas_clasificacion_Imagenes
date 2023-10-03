@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/694533828.svg)](https://zenodo.org/badge/latestdoi/694533828)
+
 # Capitulo8_Tecnicas_calsificacion_Imagenes
 
 ## 1. VISUALIZACIÓN DE IMÁGENES
