@@ -2,7 +2,7 @@
 
 Mª Ángeles Varo Martínez y Rafael Mª Navarro Cerrillo
 
-# Capitulo8_Tecnicas_clasificacion_Imagenes
+# Capitulo 5: Técnicas de clasificación en ciencias forestales
 
 ## 1. VISUALIZACIÓN DE IMÁGENES
 
