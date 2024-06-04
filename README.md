@@ -2,11 +2,11 @@
 
 Mª Ángeles Varo Martínez y Rafael Mª Navarro Cerrillo
 
-# Capitulo 5: Técnicas de clasificación en ciencias forestales
+# Capitulo 6: Técnicas de clasificación en ciencias forestales
 
 ## 1. VISUALIZACIÓN DE IMÁGENES
 
-En el presente ejercicio se va a aprender a visualizar y manipular imágenes satelitales, además de a operar con ellas para generar índices de vegetación empleando el lenguaje R. Los datos e imágenes utilizadas en este capítulo son los que se descargaron en el [Capítulo 7 Sensores, acceso y procesado de imágenes multiespectrales y térmicas de interés forestal](https://github.com/Libro-GEOFOREST/Capitulo7-Sensores_Teledeteccion/blob/main/README.md#capitulo7-sensores_teledeteccion)  
+En el presente ejercicio se va a aprender a visualizar y manipular imágenes satelitales, además de a operar con ellas para generar índices de vegetación empleando el lenguaje R. Los datos e imágenes utilizadas en este capítulo son los que se descargaron en el [Capítulo 5 Sensores, acceso y procesado de imágenes](https://github.com/Libro-GEOFOREST/Capitulo5-Sensores_Teledeteccion)  
 
 Primero se va a aprender a visualizar y manejar las imágenes de satélite, intentando comprender la organización interna de las mismas, cómo se configura la estructura de sus datos y la información que aportan del terreno.
 
